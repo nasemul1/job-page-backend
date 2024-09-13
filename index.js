@@ -9,9 +9,9 @@ const PORT = 8000;
 // Middleware to parse JSON bodies
 app.use(express.json());
 
-// app.use(cors({
-//     origin: 'https://nasemul1.github.io/job-page-backend/'
-// }));
+app.use(cors({
+    origin: 'https://nasemul1.github.io/job-page-backend/'
+}));
 
 app.get('/jobs', (req, res) => {
     return res.json(jobsData);
