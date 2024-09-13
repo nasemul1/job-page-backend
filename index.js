@@ -10,7 +10,7 @@ const PORT = 8000;
 app.use(express.json());
 
 app.use(cors({
-    origin: 'https://nasemul1.github.io/job-page-backend/'
+    origin: 'https://jobs-page-indol.vercel.app/'
 }));
 
 app.get('/jobs', (req, res) => {
