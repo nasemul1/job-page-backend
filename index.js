@@ -9,8 +9,10 @@ const PORT = 8000;
 // Middleware to parse JSON bodies
 app.use(express.json());
 
+// Allow CORS from any origin
 app.use(cors({
-    origin: 'https://jobs-page-indol.vercel.app'
+    origin: '*', // Allow access from any domain
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow all HTTP methods
 }));
 
 app.get('/jobs', (req, res) => {
@@ -20,7 +22,7 @@ app.get('/jobs', (req, res) => {
 app.get('/jobs/:id', (req, res) => {
     const jobId = req.params.id;
     const job = jobsData.jobs.find(job => job.id === jobId);
-  
+
     if (job) {
       res.json(job);
     } else {
