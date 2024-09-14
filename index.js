@@ -3,16 +3,15 @@ const cors = require("cors");
 const fs = require('fs');
 const jobsData = require("./db.json");
 const app = express();
+const { v4: uuidv4 } = require('uuid');
 
 const PORT = 8000;
 
-// Middleware to parse JSON bodies
 app.use(express.json());
 
-// Allow CORS from any origin
 app.use(cors({
-    origin: '*', // Allow access from any domain
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow all HTTP methods
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
 
 app.get('/jobs', (req, res) => {
@@ -32,12 +31,18 @@ app.get('/jobs/:id', (req, res) => {
 
 app.post('/jobs', (req, res) => {
     const body = req.body;
-    jobsData.jobs.push(body);
-    fs.writeFile('./db.json', JSON.stringify(jobsData), (err) => {
+
+    const newId = uuidv4();
+
+    const newJob = { id: newId, ...body };
+
+    jobsData.jobs.push(newJob);
+
+    fs.writeFile('./db.json', JSON.stringify(jobsData, null, 2), (err) => {
         if (err) {
             return res.status(500).json({ status: 'error', message: err.message });
         }
-        return res.json({ status: 'success' });
+        return res.json({ status: 'success', job: newJob });
     });
 });
 
@@ -45,18 +50,14 @@ app.put('/jobs/:id', (req, res) => {
     const jobId = req.params.id;
     const updatedJob = req.body;
 
-    // Find the index of the job to be updated
     const jobIndex = jobsData.jobs.findIndex(job => job.id === jobId);
 
-    // Check if the job exists
     if (jobIndex === -1) {
         return res.status(404).json({ status: 'error', message: 'Job not found' });
     }
 
-    // Update the job with new data
     jobsData.jobs[jobIndex] = { ...jobsData.jobs[jobIndex], ...updatedJob };
 
-    // Write the updated jobs data back to the JSON file
     fs.writeFile('./db.json', JSON.stringify(jobsData, null, 2), (err) => {
         if (err) {
             return res.status(500).json({ status: 'error', message: err.message });
@@ -68,18 +69,14 @@ app.put('/jobs/:id', (req, res) => {
 app.delete('/jobs/:id', (req, res) => {
     const jobId = req.params.id;
 
-    // Find the index of the job to be deleted
     const jobIndex = jobsData.jobs.findIndex(job => job.id === jobId);
 
-    // Check if the job exists
     if (jobIndex === -1) {
         return res.status(404).json({ status: 'error', message: 'Job not found' });
     }
 
-    // Remove the job from the jobs array
     const deletedJob = jobsData.jobs.splice(jobIndex, 1);
 
-    // Write the updated jobs data back to the JSON file
     fs.writeFile('./db.json', JSON.stringify(jobsData, null, 2), (err) => {
         if (err) {
             return res.status(500).json({ status: 'error', message: err.message });
