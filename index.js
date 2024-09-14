@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -5,6 +7,7 @@ const cors = require('cors');
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 8000;
+const MONGODB_URI = process.env.MONGODB_URI;
 
 // Middleware
 app.use(express.json());
@@ -13,13 +16,15 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
 
-// MongoDB connection
-const MONGODB_URI = 'mongodb+srv://nasemul1:VI11dIDcEe9AlTwM@testcluster.8jgda.mongodb.net/?retryWrites=true&w=majority&appName=TestCluster'; // Replace with your MongoDB URI
-
-mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => console.log('MongoDB connected successfully'))
-    .catch((err) => console.log('MongoDB connection error:', err));
-
+mongoose.connect(MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+.then(() => console.log('Connected to MongoDB successfully'))
+.catch((err) => {
+    console.error('Failed to connect to MongoDB', err.message);
+    process.exit(1);
+});
 // Define the Job schema
 const JobSchema = new mongoose.Schema({
     type: { type: String, required: true },
