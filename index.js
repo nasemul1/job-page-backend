@@ -1,88 +1,107 @@
-const express = require("express");
-const cors = require("cors");
-const fs = require('fs');
-const jobsData = require("./db.json");
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+// Initialize Express app
 const app = express();
-const { v4: uuidv4 } = require('uuid');
+const PORT = process.env.PORT || 8000;
 
-const PORT = 8000;
-
+// Middleware
 app.use(express.json());
-
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
 
-app.get('/jobs', (req, res) => {
-    return res.json(jobsData);
-});
+// MongoDB connection
+const MONGODB_URI = 'mongodb+srv://nasemul1:VI11dIDcEe9AlTwM@testcluster.8jgda.mongodb.net/?retryWrites=true&w=majority&appName=TestCluster'; // Replace with your MongoDB URI
 
-app.get('/jobs/:id', (req, res) => {
-    const jobId = req.params.id;
-    const job = jobsData.jobs.find(job => job.id === jobId);
+mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log('MongoDB connected successfully'))
+    .catch((err) => console.log('MongoDB connection error:', err));
 
-    if (job) {
-      res.json(job);
-    } else {
-      res.status(404).json({ message: 'Job not found' });
+// Define the Job schema
+const JobSchema = new mongoose.Schema({
+    type: { type: String, required: true },
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    salary: { type: String, required: true },
+    location: { type: String, required: true },
+    company: {
+        name: { type: String, required: true },
+        description: { type: String },
+        contactEmail: { type: String, required: true },
+        contactPhone: { type: String }
+    }
+}, { timestamps: true });
+
+// Create Job model
+const Job = mongoose.model('Job', JobSchema);
+
+// API Routes
+
+// Get all jobs
+app.get('/jobs', async (req, res) => {
+    try {
+        const jobs = await Job.find();
+        res.json(jobs);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching jobs', error: error.message });
     }
 });
 
-app.post('/jobs', (req, res) => {
-    const body = req.body;
-
-    const newId = uuidv4();
-
-    const newJob = { id: newId, ...body };
-
-    jobsData.jobs.push(newJob);
-
-    fs.writeFile('./db.json', JSON.stringify(jobsData, null, 2), (err) => {
-        if (err) {
-            return res.status(500).json({ status: 'error', message: err.message });
+// Get job by ID
+app.get('/jobs/:id', async (req, res) => {
+    try {
+        const job = await Job.findById(req.params.id);
+        if (!job) {
+            return res.status(404).json({ message: 'Job not found' });
         }
-        return res.json({ status: 'success', job: newJob });
-    });
-});
-
-app.put('/jobs/:id', (req, res) => {
-    const jobId = req.params.id;
-    const updatedJob = req.body;
-
-    const jobIndex = jobsData.jobs.findIndex(job => job.id === jobId);
-
-    if (jobIndex === -1) {
-        return res.status(404).json({ status: 'error', message: 'Job not found' });
+        res.json(job);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching job', error: error.message });
     }
-
-    jobsData.jobs[jobIndex] = { ...jobsData.jobs[jobIndex], ...updatedJob };
-
-    fs.writeFile('./db.json', JSON.stringify(jobsData, null, 2), (err) => {
-        if (err) {
-            return res.status(500).json({ status: 'error', message: err.message });
-        }
-        return res.json({ status: 'success', job: jobsData.jobs[jobIndex] });
-    });
 });
 
-app.delete('/jobs/:id', (req, res) => {
-    const jobId = req.params.id;
-
-    const jobIndex = jobsData.jobs.findIndex(job => job.id === jobId);
-
-    if (jobIndex === -1) {
-        return res.status(404).json({ status: 'error', message: 'Job not found' });
+// Create a new job
+app.post('/jobs', async (req, res) => {
+    try {
+        const jobData = req.body;
+        const newJob = new Job(jobData);
+        await newJob.save();
+        res.status(201).json({ status: 'success', job: newJob });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
     }
-
-    const deletedJob = jobsData.jobs.splice(jobIndex, 1);
-
-    fs.writeFile('./db.json', JSON.stringify(jobsData, null, 2), (err) => {
-        if (err) {
-            return res.status(500).json({ status: 'error', message: err.message });
-        }
-        return res.json({ status: 'success', message: 'Job deleted', job: deletedJob[0] });
-    });
 });
 
-app.listen(PORT, () => console.log(`Server has started at port: ${PORT}`));
+// Update an existing job
+app.put('/jobs/:id', async (req, res) => {
+    try {
+        const updatedJob = await Job.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        if (!updatedJob) {
+            return res.status(404).json({ message: 'Job not found' });
+        }
+        res.json({ status: 'success', job: updatedJob });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// Delete a job
+app.delete('/jobs/:id', async (req, res) => {
+    try {
+        const deletedJob = await Job.findByIdAndDelete(req.params.id);
+        if (!deletedJob) {
+            return res.status(404).json({ message: 'Job not found' });
+        }
+        res.json({ status: 'success', message: 'Job deleted', job: deletedJob });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// Start the server
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
